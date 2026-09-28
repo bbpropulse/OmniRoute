@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { getStainlessTimeoutSeconds } from "@/shared/utils/runtimeTimeouts";
+import { getModelSpec } from "@/shared/constants/modelSpecs.ts";
 import { ANTHROPIC_VERSION_HEADER } from "../config/anthropicHeaders.ts";
 import {
   CLAUDE_CODE_COMPATIBLE_STAINLESS_PACKAGE_VERSION,
@@ -460,7 +461,11 @@ export function resolveClaudeCodeCompatibleEffort(
   const normalizedEffort = raw.toLowerCase();
 
   if (!normalizedEffort) {
-    return supportsClaudeXHighEffort(model) ? "xhigh" : "high";
+    return getModelSpec(model || "")?.defaultReasoningEffort === "medium"
+      ? "medium"
+      : supportsClaudeXHighEffort(model)
+        ? "xhigh"
+        : "high";
   }
   if (normalizedEffort === "low") return "low";
   if (normalizedEffort === "medium") return "medium";

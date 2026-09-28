@@ -42,6 +42,8 @@ import { extractApiKey } from "@/sse/services/auth";
 import { maybeOmitCatalogModelName } from "./catalogHelpers";
 import { applyCatalogPage, catalogJsonResponse, parseCatalogPage } from "./catalogPagination";
 import { isCodexModelCatalogClient } from "./catalogRequest";
+import { filterCatalogByAllowlist } from "./catalogAllowlist";
+import { buildAliasMaps } from "./catalogProviderMaps";
 
 /**
  * Post-filter chain applied AFTER the API-key filter, so variants and mirrors are
@@ -228,6 +230,12 @@ export async function finalizeCatalogResponse(
       );
     }
   }
+
+  finalModels = filterCatalogByAllowlist(
+    finalModels,
+    process.env.MODEL_DISCOVERY_ALLOWLIST,
+    buildAliasMaps().aliasToProviderId
+  );
 
   const includeModelNames = isModelCatalogNamesEnabled();
   // #9147: enrichment is the most expensive single stage of the catalog build —

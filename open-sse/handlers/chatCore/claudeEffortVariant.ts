@@ -34,6 +34,8 @@ function hasExplicitClaudeEffort(claudeBody: Record<string, unknown>): boolean {
 export function applyClaudeEffortVariant(opts: {
   provider: string | null | undefined;
   effectiveModel: string;
+  /** Effort already split from a Claude id during live-catalog validation. */
+  resolvedThinkingEffort?: string | null;
   /** Mutated in place (model + reasoning_effort) when an effort suffix is stripped. */
   body: unknown;
   sourceFormat: string;
@@ -62,7 +64,13 @@ export function applyClaudeEffortVariant(opts: {
   }
 
   if (typeof effectiveModel === "string") {
-    const { baseModel, effort } = splitClaudeEffortSuffix(effectiveModel);
+    const effortModel =
+      provider === "claude" &&
+      opts.resolvedThinkingEffort &&
+      isKnownClaudeEffortBaseModel(effectiveModel)
+        ? `${effectiveModel}-${opts.resolvedThinkingEffort}`
+        : effectiveModel;
+    const { baseModel, effort } = splitClaudeEffortSuffix(effortModel);
     const isDirectClaudeLane = provider === "claude" || isClaudeCodeCompatibleProvider(provider);
     if (effort && (isDirectClaudeLane || isKnownClaudeEffortBaseModel(baseModel))) {
       effectiveModel = baseModel;

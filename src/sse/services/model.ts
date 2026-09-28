@@ -15,6 +15,14 @@ import {
 } from "@omniroute/open-sse/services/model.ts";
 import { getLearnedReasoningEffortForModel } from "@omniroute/open-sse/services/learnedReasoningEffortCaps.ts";
 import { REGISTRY } from "@omniroute/open-sse/config/providerRegistry.ts";
+import {
+  splitClaudeEffortSuffix,
+  supportsClaudeMaxEffort,
+} from "@omniroute/open-sse/config/providerModels.ts";
+import {
+  claudeEffortLevelsFor,
+  isKnownClaudeEffortBaseModel,
+} from "@omniroute/open-sse/utils/claudeEffortVariants.ts";
 import { getRegisteredProviderEffortBaseModelId } from "@omniroute/open-sse/utils/registeredEffortVariants.ts";
 import { getReservedProviderPrefixes } from "@/shared/constants/reservedProviderPrefixes";
 import {
@@ -159,6 +167,21 @@ function resolveRegistryModelIdAndEffort(
     );
     if (attempt.effort && attempt.baseModel === candidate.id) {
       return { modelId: attempt.baseModel, effort: attempt.effort };
+    }
+  }
+
+  // Claude discovery generates effort variants even when the live model metadata
+  // omits its tiers. Resolve those variants before checking live availability;
+  // the base still has to exist, and the effort travels with the resolved model.
+  if (providerId === "claude") {
+    const { baseModel, effort } = splitClaudeEffortSuffix(modelId);
+    if (
+      effort &&
+      isKnownClaudeEffortBaseModel(baseModel) &&
+      (claudeEffortLevelsFor(providerId, baseModel).includes(effort) ||
+        (effort === "max" && supportsClaudeMaxEffort(baseModel)))
+    ) {
+      return { modelId: baseModel, effort };
     }
   }
 

@@ -38,7 +38,7 @@ export const NO_THINKING_PREFIX = "no-think/";
 // applyClaudeEffortVariant's hasExplicitClaudeEffort() check runs, so the pre-set
 // "none" is treated as explicit and the suffix's implied effort is silently
 // discarded — semantically incoherent, so never advertise the combination.
-const CLAUDE_EFFORT_SUFFIX_RE = /-(?:xhigh|high|medium|low)$/i;
+const CLAUDE_EFFORT_SUFFIX_RE = /-(?:xhigh|max|high|medium|low)$/i;
 
 /** True when `modelId` carries the no-thinking gateway prefix. */
 export function isNoThinkingAlias(modelId: unknown): modelId is string {

@@ -17,6 +17,8 @@ export interface ModelSpec {
   supportsVision?: boolean;
   supportsAudio?: boolean;
   supportsVideo?: boolean;
+  // Explicit catalog efforts for models whose supported levels differ from the legacy defaults.
+  effortLevels?: readonly ("low" | "medium" | "high" | "xhigh" | "max")[];
   // Model defaults to adaptive thinking and REJECTS an explicit `thinking.type:"disabled"`
   // (upstream returns 400). Used to normalize the request when a combo/route substitutes
   // this model after the client already chose `disabled`. See issue #3554.
@@ -388,6 +390,21 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     aliases: BEDROCK_CLAUDE_ALIASES("claude-sonnet-4-6", "claude-sonnet-4.6"),
   },
 
+  // Keep 5.5 before Sonnet 5: suffixed IDs use prefix lookup.
+  "claude-sonnet-5-5": {
+    maxOutputTokens: 128000,
+    contextWindow: 1000000,
+    defaultThinkingBudget: 32000,
+    thinkingBudgetCap: 120000,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    adaptiveThinkingOnly: true,
+    rejectsThinkingDisabled: true,
+    effortLevels: ["low", "medium", "high", "xhigh", "max"],
+    aliases: BEDROCK_CLAUDE_ALIASES("claude-sonnet-5-5"),
+  },
+
   // ── Claude Sonnet 5 ─────────────────────────────────────────────
   "claude-sonnet-5": {
     // 1M context, 128K max output. Adaptive-thinking-only (manual
@@ -466,6 +483,22 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     // …and, like Opus 4.7+, rejects manual budgets/`type:"enabled"` (adaptive-only).
     adaptiveThinkingOnly: true,
     aliases: BEDROCK_CLAUDE_ALIASES("claude-fable-5"),
+  },
+
+  // Keep the more-specific 5.5 entry before Opus 5: suffixed IDs use prefix lookup.
+  "claude-opus-5-5": {
+    maxOutputTokens: 128000,
+    contextWindow: 1000000,
+    defaultThinkingBudget: 32000,
+    thinkingBudgetCap: 120000,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    adaptiveThinkingOnly: true,
+    rejectsThinkingDisabled: true,
+    defaultReasoningEffort: "medium",
+    effortLevels: ["low", "medium", "high", "xhigh", "max"],
+    aliases: BEDROCK_CLAUDE_ALIASES("claude-opus-5-5"),
   },
 
   // ── Claude Opus 5 ───────────────────────────────────────────────

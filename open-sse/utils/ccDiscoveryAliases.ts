@@ -14,7 +14,10 @@
  * The mirror entry keeps every field from the original (translated by the
  * existing model-id handling once the request lands, same as `no-think/…` and
  * the effort-variant aliases), only overriding `id`, `root` (back-pointer to the
- * real id), and `display_name`. This mirrors the structure of
+ * real id), and `display_name`, plus Desktop's family compatibility metadata.
+ * Desktop requires a recognizable Claude family even when the id starts with
+ * `claude/`; its documented `anthropic_family_tier` field supports opaque aliases.
+ * This mirrors the structure of
  * `claudeEffortVariants.ts` and `noThinkingAlias.ts`: pure synthesis over the
  * already key-filtered catalog list, no I/O, no mutation of the input array.
  *
@@ -33,7 +36,7 @@ export const CC_DISCOVERY_COMBO_PREFIX = "claude/combo/";
 // Ids that already live under the claude/anthropic namespace — never re-mirror them.
 const ALREADY_CLAUDE_RE = /^(?:claude|anthropic)(?:\/|$)/i;
 // Ids that already carry a reasoning-effort suffix — v1 only mirrors base ids.
-const CLAUDE_EFFORT_SUFFIX_RE = /-(?:xhigh|high|medium|low)$/i;
+const CLAUDE_EFFORT_SUFFIX_RE = /-(?:xhigh|max|high|medium|low)$/i;
 const NO_THINKING_PREFIX = "no-think/";
 // Built-in `auto`/`auto/*` combos are synthesized by createBuiltinAutoCombo, NOT
 // stored in the DB combos table — the request-path resolver (getComboByName) can't
@@ -76,6 +79,19 @@ function bareModelName(id: string): string {
   return slash >= 0 ? id.slice(slash + 1) : id;
 }
 
+const CLAUDE_FAMILY_TIERS = new Set(["haiku", "sonnet", "opus", "fable", "mythos"]);
+
+function desktopFamilyTier(model: CcDiscoveryCatalogEntry, id: string): string {
+  const declaredTier = model.anthropic_family_tier;
+  if (typeof declaredTier === "string" && CLAUDE_FAMILY_TIERS.has(declaredTier)) {
+    return declaredTier;
+  }
+  const nativeFamily = /^claude-(haiku|sonnet|opus|fable|mythos)(?:-|$)/i.exec(bareModelName(id));
+  // A picker compatibility tier for opted-in non-Claude aliases, not the actual
+  // provider or model identity. Preserve owned_by, display_name and token limits.
+  return nativeFamily?.[1].toLowerCase() ?? "sonnet";
+}
+
 export function appendCcDiscoveryAliases<T extends CcDiscoveryCatalogEntry>(
   models: T[],
   isEnabled: (entry: T) => boolean
@@ -102,6 +118,10 @@ export function appendCcDiscoveryAliases<T extends CcDiscoveryCatalogEntry>(
       // the "/" stripped down to the bare model name.
       root: isCombo ? id : bareModelName(id),
       display_name: `${label} (OmniRoute)`,
+      // https://claude.com/docs/third-party/claude-desktop/gateway#models
+      anthropic_family_tier: desktopFamilyTier(model, id),
+      // A discovery mirror must not take over the user's native tier default.
+      is_family_default: false,
     } as T);
   }
 

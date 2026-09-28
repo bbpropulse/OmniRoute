@@ -98,6 +98,62 @@ test("#8926: explicit provider/model rejects a stale static model before upstrea
   );
 });
 
+test("Claude effort variants resolve through a live base without synced effort metadata", async () => {
+  const models = [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5",
+    "claude-opus-5",
+    "claude-fable-5-1",
+  ];
+  await seedProviderCatalog("claude", "claude-effort-live", models);
+
+  for (const model of models) {
+    const levels = model.includes("haiku")
+      ? ["low", "medium", "high"]
+      : ["low", "medium", "high", "xhigh", "max"];
+    for (const effort of levels) {
+      for (const prefix of ["claude", "cc"]) {
+        const resolved = await getModelInfo(`${prefix}/${model}-${effort}[1m]`);
+        assert.equal(resolved.errorType, undefined, resolved.errorMessage);
+        assert.equal(resolved.provider, "claude");
+        assert.equal(resolved.model, model);
+        assert.equal(resolved.resolvedThinkingEffort, effort);
+        assert.equal(resolved.extendedContext, true);
+      }
+    }
+  }
+});
+
+test("Claude effort variants still require their base in the active live catalog", async () => {
+  await seedProviderCatalog("claude", "claude-effort-live", ["claude-sonnet-5"]);
+  const resolved = await getModelInfo("claude/claude-opus-5-high");
+  assert.equal(resolved.provider, null);
+  assert.equal(resolved.errorType, "model_not_found");
+});
+
+test("Claude unsupported effort suffixes do not become live models", async () => {
+  await seedProviderCatalog("claude", "claude-effort-live", [
+    "claude-opus-5",
+    "claude-haiku-4-5-20251001",
+  ]);
+  for (const model of ["claude-opus-5-ultra", "claude-haiku-4-5-20251001-xhigh"]) {
+    const resolved = await getModelInfo(`claude/${model}`);
+    assert.equal(resolved.provider, null);
+    assert.equal(resolved.errorType, "model_not_found");
+  }
+});
+
+test("Claude literal live model names keep precedence over synthetic effort variants", async () => {
+  await seedProviderCatalog("claude", "claude-effort-live", [
+    "claude-opus-5",
+    "claude-opus-5-high",
+  ]);
+  const resolved = await getModelInfo("claude/claude-opus-5-high");
+  assert.equal(resolved.provider, "claude");
+  assert.equal(resolved.model, "claude-opus-5-high");
+  assert.equal(resolved.resolvedThinkingEffort, undefined);
+});
+
 test("#8926: active alternative provider remains eligible", async () => {
   await seedProviderCatalog("ghe-copilot", "ghe-copilot-active-8926", []);
 

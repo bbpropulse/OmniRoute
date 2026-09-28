@@ -422,7 +422,7 @@ export default function MemorySkillsTab() {
                 data-testid="memory-retention-slider"
                 type="range"
                 min="1"
-                max="90"
+                max="365"
                 step="1"
                 value={config.retentionDays}
                 onChange={(e) => save({ retentionDays: parseInt(e.target.value) })}
@@ -430,9 +430,9 @@ export default function MemorySkillsTab() {
               />
               <div className="flex justify-between text-xs text-text-muted mt-1">
                 <span>1</span>
-                <span>30</span>
-                <span>60</span>
                 <span>90</span>
+                <span>180</span>
+                <span>365</span>
               </div>
             </div>
 

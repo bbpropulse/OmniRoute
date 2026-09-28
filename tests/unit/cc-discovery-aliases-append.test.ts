@@ -35,6 +35,63 @@ test("adds a claude/ mirror with display_name and root for an eligible model", (
   assert.equal(alias.owned_by, "kimi");
 });
 
+test("Codex mirrors advertise the family metadata required by Desktop discovery", () => {
+  const original: CatalogEntry = {
+    id: "codex/gpt-6-astra",
+    owned_by: "codex",
+    name: "GPT 6 Astra",
+    max_input_tokens: 872000,
+  };
+  const out = appendCcDiscoveryAliases([original], alwaysEnabled);
+  const alias = out[1];
+
+  // Desktop's discovery requires a recognizable Claude family or an explicit
+  // anthropic_family_tier; the CLI's claude/ prefix alone is insufficient.
+  assert.equal(alias.anthropic_family_tier, "sonnet");
+  assert.equal(alias.is_family_default, false);
+  assert.equal(alias.id, "claude/codex/gpt-6-astra");
+  assert.equal(alias.display_name, "GPT 6 Astra (OmniRoute)");
+  assert.equal(alias.owned_by, "codex");
+  assert.equal(alias.max_input_tokens, 872000);
+  assert.equal(alias.supports_1m, undefined);
+  assert.equal(out[0], original);
+  assert.equal(original.anthropic_family_tier, undefined);
+});
+
+test("mirrors preserve a recognized Claude family without replacing its default", () => {
+  const models: CatalogEntry[] = [
+    { id: "vertex/claude-opus-5", owned_by: "vertex" },
+    {
+      id: "gateway/custom-route",
+      anthropic_family_tier: "haiku",
+      is_family_default: true,
+    },
+    { id: "gateway/another-route", anthropic_family_tier: "invalid-tier" },
+  ];
+  const aliases = appendCcDiscoveryAliases(models, alwaysEnabled).slice(models.length);
+  assert.deepEqual(
+    aliases.map((m) => m.anthropic_family_tier),
+    ["opus", "haiku", "sonnet"]
+  );
+  assert.ok(aliases.every((m) => m.is_family_default === false));
+  assert.equal(models[1].is_family_default, true);
+});
+
+test("Desktop metadata never opts disabled models into discovery or modifies native Claude", () => {
+  const models: CatalogEntry[] = [
+    { id: "claude/claude-sonnet-5", owned_by: "claude" },
+    { id: "codex/gpt-6-astra", owned_by: "codex" },
+  ];
+  assert.equal(
+    appendCcDiscoveryAliases(models, () => false),
+    models
+  );
+  const out = appendCcDiscoveryAliases(models, alwaysEnabled);
+  assert.equal(out[0], models[0]);
+  assert.equal(out[0].anthropic_family_tier, undefined);
+  assert.equal(out.filter((m) => m.id === models[0].id).length, 1);
+});
+
 test("keeps root bare even when the original id carries a provider prefix", () => {
   const models: CatalogEntry[] = [
     { id: "vertex/claude-sonnet-5", owned_by: "vertex", name: "Claude Sonnet 5 (Vertex)" },

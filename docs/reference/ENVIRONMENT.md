@@ -1002,6 +1002,14 @@ Automatic model pricing data synchronization from external sources.
 
 ## Arena ELO Sync
 
+`MODEL_DISCOVERY_ALLOWLIST` optionally restricts `GET /v1/models` for every API key to a
+comma-separated list of exact public model IDs. Provider aliases are deduplicated and the
+configured prefixes are used in the response. Existing key permissions still apply, and
+missing models are never added. This controls discovery only, not inference authorization.
+Unset preserves the full catalog; an empty or invalid value returns an empty catalog.
+Wildcards are not supported. Example: `claude/claude-haiku-4-5-20251001,claude/claude-sonnet-5,claude/claude-opus-5,claude/claude-fable-5-1`.
+Source: `src/app/api/v1/models/catalogResponse.ts`.
+
 | Variable                  | Default       | Source File                                      | Description                                                                                                   |
 | ------------------------- | ------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `ARENA_ELO_SYNC_ENABLED`  | `true`        | `src/shared/constants/featureFlagDefinitions.ts` | Periodic Arena AI leaderboard ELO sync, configurable from Dashboard Feature Flags or with `false` to opt out. |

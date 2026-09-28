@@ -867,6 +867,7 @@ export async function handleChatCore({
     const effortVariant = applyClaudeEffortVariant({
       provider,
       effectiveModel,
+      resolvedThinkingEffort: effectiveModel === originModel ? resolvedThinkingEffort : undefined,
       body,
       sourceFormat,
     });

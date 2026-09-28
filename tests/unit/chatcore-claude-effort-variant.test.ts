@@ -67,6 +67,31 @@ test("claude provider + effort suffix → strips to base, mutates body model + r
   assert.match(String(r.log), /stripped "-high" → claude-sonnet-4 \(reasoning_effort=high\)/);
 });
 
+test("Claude effort resolved by the live catalog reaches format translation", () => {
+  const body: Record<string, unknown> = { model: "claude-opus-5", messages: [] };
+  const result = applyClaudeEffortVariant({
+    provider: "claude",
+    effectiveModel: "claude-opus-5",
+    resolvedThinkingEffort: "high",
+    body,
+    sourceFormat: FORMATS.OPENAI,
+  });
+  assert.equal(result.effectiveModel, "claude-opus-5");
+  assert.equal(body.reasoning_effort, "high");
+});
+
+test("explicit effort still wins over live-catalog-resolved Claude effort", () => {
+  const body = { model: "claude-opus-5", reasoning_effort: "low", messages: [] };
+  applyClaudeEffortVariant({
+    provider: "claude",
+    effectiveModel: "claude-opus-5",
+    resolvedThinkingEffort: "high",
+    body,
+    sourceFormat: FORMATS.OPENAI,
+  });
+  assert.equal(body.reasoning_effort, "low");
+});
+
 test("claude-code-compatible provider triggers the same stripping", () => {
   const body: Record<string, unknown> = { model: "claude-opus-4-xhigh", messages: [] };
   const r = applyClaudeEffortVariant({

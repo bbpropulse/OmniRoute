@@ -14,6 +14,9 @@ const log = logger("MEMORY_EXTRACTION");
 
 /** Patterns indicating user preferences */
 const PREFERENCE_PATTERNS: RegExp[] = [
+  // Keep the Portuguese clause intact, including negation and first-person verbs.
+  // Sentence boundaries avoid interpreting a third-person quote as the user's preference.
+  /(?:^|[.!?\n])[ \t]*((?:eu[ \t]+)?(?:n[aã]o[ \t]+)?(?:prefiro|gosto[ \t]+de|adoro|evito)[ \t]+[^.,!?\n]+)/giu,
   /\bI\s+(?:really\s+)?prefer\s+([^.,\n]+)/gi,
   /\bI\s+(?:really\s+)?like\s+([^.,\n]+)/gi,
   /\bmy\s+(?:favorite|favourite)\s+(?:is|are)\s+([^.,\n]+)/gi,
@@ -25,6 +28,7 @@ const PREFERENCE_PATTERNS: RegExp[] = [
 
 /** Patterns indicating user decisions */
 const DECISION_PATTERNS: RegExp[] = [
+  /(?:^|[.!?\n])[ \t]*((?:eu[ \t]+)?(?:n[aã]o[ \t]+)?(?:decidi|escolhi|optei|vou[ \t]+(?:usar|adotar))[ \t]+[^.,!?\n]+)/giu,
   /\bI'?(?:ll|will)\s+use\s+([^.,\n]+)/gi,
   /\bI\s+chose\s+([^.,\n]+)/gi,
   /\bI\s+(?:have\s+)?decided\s+(?:to\s+)?([^.,\n]+)/gi,
@@ -36,6 +40,7 @@ const DECISION_PATTERNS: RegExp[] = [
 
 /** Patterns indicating user behavioral patterns */
 const PATTERN_PATTERNS: RegExp[] = [
+  /(?:^|[.!?\n])[ \t]*((?:eu[ \t]+(?:sempre|nunca|normalmente|geralmente)|(?:eu[ \t]+)?costumo)[ \t]+[^.,!?\n]+)/giu,
   /\bI\s+usually\s+([^.,\n]+)/gi,
   /\bI\s+always\s+([^.,\n]+)/gi,
   /\bI\s+never\s+([^.,\n]+)/gi,

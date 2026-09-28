@@ -32,3 +32,7 @@ test("provider detail client entry stays browser-bundle safe", async () => {
     "../../src/app/(dashboard)/dashboard/providers/[id]/ProviderDetailPageClient.tsx"
   );
 });
+
+test("combos page resolves provider aliases without pulling in server routing code", async () => {
+  await assertBrowserBundleSafe("../../src/app/(dashboard)/dashboard/combos/page.tsx");
+});

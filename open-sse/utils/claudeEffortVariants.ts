@@ -26,7 +26,8 @@
  * effort-capable Claude model advertises Low/Medium/High, and xHigh is added only
  * for models that support it (e.g. Fable 5, Opus 4.8, Sonnet 5 — not Opus 4.6/4.5
  * or Haiku). "none" is intentionally omitted: it is the base model id, already in
- * the catalog. Max/ultra are codex-only presets and are not synthesized here.
+ * the catalog. Explicit model-spec effort levels take precedence, including Max
+ * for Opus 5.5. Ultra is not an Anthropic effort level.
  */
 import { getModelSpec } from "@/shared/constants/modelSpecs";
 import { supportsXHighEffort } from "../config/providerModels.ts";
@@ -38,10 +39,10 @@ export const CLAUDE_EFFORT_VARIANT_LEVELS = ["low", "medium", "high"] as const;
 export const CLAUDE_XHIGH_EFFORT_LEVEL = "xhigh";
 
 export type ClaudeEffortVariantLevel =
-  (typeof CLAUDE_EFFORT_VARIANT_LEVELS)[number] | typeof CLAUDE_XHIGH_EFFORT_LEVEL;
+  (typeof CLAUDE_EFFORT_VARIANT_LEVELS)[number] | typeof CLAUDE_XHIGH_EFFORT_LEVEL | "max";
 
 // Ids that already carry a reasoning-effort suffix — never double-suffix them.
-const CLAUDE_EFFORT_SUFFIX_RE = /-(?:xhigh|high|medium|low)$/i;
+const CLAUDE_EFFORT_SUFFIX_RE = /-(?:xhigh|max|high|medium|low)$/i;
 const CLAUDE_NAME_RE = /claude/i;
 const NO_THINKING_PREFIX = "no-think/";
 
@@ -132,6 +133,8 @@ function normalizeProviderPrefix(
  * xHigh only when the model supports it (single source of truth `supportsXHighEffort`).
  */
 export function claudeEffortLevelsFor(providerId: string, modelId: string): string[] {
+  const explicitLevels = getModelSpec(modelId)?.effortLevels;
+  if (explicitLevels) return [...explicitLevels];
   const levels: string[] = [...CLAUDE_EFFORT_VARIANT_LEVELS];
   if (supportsXHighEffort(providerId, modelId)) {
     levels.push(CLAUDE_XHIGH_EFFORT_LEVEL);

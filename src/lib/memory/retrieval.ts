@@ -16,7 +16,6 @@ import { pickApiKeyForInternalUse } from "../db/apiKeys";
 import { getRuntimePorts } from "../runtime/ports";
 import {
   estimateTokens,
-  parseMetadata,
   rowToMemory,
   getRelevanceScore,
   sanitizeFts5Query,
@@ -287,7 +286,8 @@ async function retrieveMemoriesInternal(
     return [];
   }
 
-  const maxTokens = Math.min(Math.max(normalizedConfig.maxTokens, 1), 8000);
+  // Match the 16k budget accepted by memory settings and the retrieval preview.
+  const maxTokens = Math.min(Math.max(normalizedConfig.maxTokens, 1), 16000);
   const strategy = normalizedConfig.retrievalStrategy;
 
   const db = getDbInstance();

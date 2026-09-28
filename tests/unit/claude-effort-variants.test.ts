@@ -159,7 +159,7 @@ test("never generates variants-of-variants when the list already contains effort
 
 // ── cross-module drift guard: CLAUDE_EFFORT_SUFFIX_RE parity ────────────────
 //
-// `CLAUDE_EFFORT_SUFFIX_RE` (`/-(?:xhigh|high|medium|low)$/i`) is intentionally
+// `CLAUDE_EFFORT_SUFFIX_RE` (`/-(?:xhigh|max|high|medium|low)$/i`) is intentionally
 // duplicated as a local, non-exported constant in THREE sibling modules: this
 // file's module (claudeEffortVariants.ts), noThinkingAlias.ts, and
 // ccDiscoveryAliases.ts. A cross-import consolidation of that constant was
@@ -178,10 +178,10 @@ test("CLAUDE_EFFORT_SUFFIX_RE stays in sync across claudeEffortVariants/noThinki
   // gate identically, so any behavioral difference below is attributable only
   // to the effort-suffix regex, not to some other per-module gating rule.
   const BASE = "claude-opus-4-5";
-  const EFFORT_SUFFIXES = ["-low", "-medium", "-high", "-xhigh", "-XHIGH"];
+  const EFFORT_SUFFIXES = ["-low", "-medium", "-high", "-xhigh", "-XHIGH", "-max", "-MAX"];
   // Trailing tokens that look suffix-like but must NOT match the regex
-  // (anchored to exactly low/medium/high/xhigh at end-of-string).
-  const NON_MATCHING_SUFFIXES = ["-max", "-highest"];
+  // (anchored to exactly low/medium/high/xhigh/max at end-of-string).
+  const NON_MATCHING_SUFFIXES = ["-maximum", "-highest"];
 
   for (const suffix of EFFORT_SUFFIXES) {
     const qualifiedId = `claude/${BASE}${suffix}`;
@@ -215,9 +215,9 @@ test("CLAUDE_EFFORT_SUFFIX_RE stays in sync across claudeEffortVariants/noThinki
   assert.equal(baseMirror.length, 2, "unsuffixed id must still be mirrored");
 
   // Suffix-like-but-non-matching trailing tokens must NOT be excluded by the
-  // regex. This isolates the regex's specificity (exactly xhigh/high/medium/low)
+  // regex. This isolates the regex's specificity (exactly xhigh/max/high/medium/low)
   // from the models-registry prefix-matching gate: `getCanonicalModelSpecId`
-  // resolves "claude-opus-4-5-max" back to the "claude-opus-4-5" spec via its
+  // resolves "claude-opus-4-5-maximum" back to the "claude-opus-4-5" spec via its
   // prefix-match fallback, so `shouldExposeClaudeEffortVariants` /
   // `shouldExposeNoThinkingAlias` still pass their registry-lookup gate here —
   // any exclusion left could only come from the suffix regex, and there is none.
