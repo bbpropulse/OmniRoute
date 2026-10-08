@@ -16,11 +16,12 @@
  *
  * Run manually after a build, or automatically via the `postbuild` npm hook.
  */
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { builtinModules } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { runBuildTool } from "./buildToolRunner.mjs";
-import { computeDependencyClosure } from "./colocateOptionals.mjs";
+import { computeDependencyClosure, colocateLlmlinguaOptionals } from "./colocateOptionals.mjs";
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 // STANDALONE defaults to the real build output; OMNIROUTE_STANDALONE_DIR overrides
@@ -132,6 +133,7 @@ function main() {
   console.log("[colocate-standalone] ✅ call-log artifact worker bundled");
 
   const compressionWorkerDest = join(STANDALONE, COMPRESSION_WORKER_REL);
+  const compressionWorkerMeta = `${compressionWorkerDest}.meta.json`;
   mkdirSync(dirname(compressionWorkerDest), { recursive: true });
   runBuildTool(
     "esbuild",
@@ -143,10 +145,50 @@ function main() {
       "--packages=external",
       "--format=esm",
       `--outfile=${compressionWorkerDest}`,
+      `--metafile=${compressionWorkerMeta}`,
     ],
     { stdio: "inherit" }
   );
   console.log("[colocate-standalone] ✅ compression worker bundled");
+  // The worker is bundled outside Next's tracing graph. Its external imports
+  // (including uuid and zod) need their own installed dependency closure, even
+  // when Next inlined those packages into the main server's hashed chunks.
+  try {
+    const meta = JSON.parse(readFileSync(compressionWorkerMeta, "utf8"));
+    const seeds = [
+      ...new Set(
+        Object.values(meta.outputs)
+          .flatMap((output) => output.imports)
+          .filter(
+            (entry) =>
+              entry.external &&
+              !entry.path.startsWith("node:") &&
+              !entry.path.startsWith("bun:") &&
+              !entry.path.startsWith(".") &&
+              !entry.path.startsWith("/") &&
+              !builtinModules.includes(entry.path)
+          )
+          .map((entry) =>
+            entry.path
+              .split("/")
+              .slice(0, entry.path.startsWith("@") ? 2 : 1)
+              .join("/")
+          )
+      ),
+    ].filter((name) => existsSync(join(ROOT, "node_modules", name)));
+    const workerNodeModules = join(STANDALONE, "node_modules");
+    mkdirSync(workerNodeModules, { recursive: true });
+    const copied = colocateLlmlinguaOptionals({
+      rootDir: ROOT,
+      targetNodeModulesDir: workerNodeModules,
+      seeds,
+    });
+    console.log(
+      `[colocate-standalone] ✅ compression worker dependencies: ${seeds.length} roots, copied ${copied.skipped ? 0 : copied.copied} packages`
+    );
+  } finally {
+    unlinkSync(compressionWorkerMeta);
+  }
 
   // The call-log worker is always present; scope it to ESM immediately. The
   // optional LLMLingua worker dir is added below only when its deps are installed.
