@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { Worker } from "node:worker_threads";
+import type { Worker } from "node:worker_threads";
 import type { CompressionResult } from "./types.ts";
 import type { StackedCompressionStep } from "./strategySelector.ts";
 import type {
@@ -157,8 +157,12 @@ export class CompressionWorkerPool {
     await Promise.all([...this.workers].map((slot) => this.remove(slot)));
   }
   private spawn(): PoolWorker {
+    // Resolve the constructor at runtime. Turbopack rewrites a statically
+    // imported Worker with a dynamic filename into a module-context lookup,
+    // which rejects the absolute standalone worker path before spawning.
+    const { Worker: NodeWorker } = process.getBuiltinModule("worker_threads");
     const slot: PoolWorker = {
-      worker: new Worker(resolveWorkerFile()),
+      worker: new NodeWorker(resolveWorkerFile()),
       job: null,
       timeout: null,
       idle: null,
@@ -181,7 +185,24 @@ export class CompressionWorkerPool {
   private dispatch(): void {
     while (this.queue.length) {
       let slot = [...this.workers].find((candidate) => !candidate.job);
-      if (!slot && this.workers.size < this.size) slot = this.spawn();
+      if (!slot && this.workers.size < this.size) {
+        try {
+          slot = this.spawn();
+        } catch (error) {
+          // A synchronous constructor failure used to reject run() while
+          // leaving this job in the queue forever, retaining its full prompt
+          // and onEngineStep closure (and therefore the entire chat request).
+          this.queue
+            .shift()
+            ?.reject(
+              new CompressionWorkerError(
+                `compression worker could not start: ${error instanceof Error ? error.message : String(error)}`,
+                true
+              )
+            );
+          continue;
+        }
+      }
       if (!slot) return;
       if (slot.idle) clearTimeout(slot.idle);
       const job = this.queue.shift();
@@ -202,7 +223,14 @@ export class CompressionWorkerPool {
         onEngineStep: _step,
         ...wireJob
       } = job;
-      slot.worker.postMessage(wireJob);
+      try {
+        slot.worker.postMessage(wireJob);
+      } catch (error) {
+        this.fail(
+          slot,
+          `compression worker dispatch failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   }
   private handleMessage(slot: PoolWorker, message: CompressionWorkerMessage): void {
