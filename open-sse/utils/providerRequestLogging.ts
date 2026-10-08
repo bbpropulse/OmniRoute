@@ -26,8 +26,10 @@ type WarnLog = {
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
 
+type CaptureContext = { capture: Capture | null };
+
 type CaptureState = {
-  context: AsyncLocalStorage<Capture>;
+  context: AsyncLocalStorage<CaptureContext>;
   wrappedFetch: typeof fetch | null;
   wrappedInnerFetch: typeof fetch | null;
 };
@@ -41,7 +43,7 @@ function getCaptureState(): CaptureState {
 
   if (!scopedGlobal[CAPTURE_STATE_KEY]) {
     scopedGlobal[CAPTURE_STATE_KEY] = {
-      context: new AsyncLocalStorage<Capture>(),
+      context: new AsyncLocalStorage<CaptureContext>(),
       wrappedFetch: null,
       wrappedInnerFetch: null,
     };
@@ -109,7 +111,7 @@ export function captureCurrentProviderRequest(
   log?: WarnLog | null
 ) {
   return capturePreparedRequest(
-    captureState.context.getStore(),
+    captureState.context.getStore()?.capture,
     url,
     headers,
     body,
@@ -124,7 +126,11 @@ export function captureCurrentProviderBody(
   bodyString: string,
   log?: WarnLog | null
 ) {
-  return captureCurrentProviderRequest(url, headers, parseBody(bodyString), bodyString, log);
+  const capture = captureState.context.getStore()?.capture;
+  if (!capture) return Promise.resolve();
+  const latest = capture.latest?.();
+  if (latest?.url === url && latest.bodyString === bodyString) return Promise.resolve();
+  return capturePreparedRequest(capture, url, headers, parseBody(bodyString), bodyString, log);
 }
 
 const DISPATCH_STATE_KEY = Symbol.for("omniroute.providerRequestCapture.dispatch");
@@ -161,12 +167,23 @@ export function onDispatchStart(listener: DispatchStartListener): void {
 export function runWithCapture<T>(requestCapture: Capture, fn: () => Promise<T>): Promise<T> {
   installFetchCapture();
   const dispatch = { settled: false };
-  return dispatchContext.run(dispatch, () => {
-    for (const listener of getDispatchStartListeners()) listener();
-    return captureState.context.run(requestCapture, fn).finally(() => {
-      dispatch.settled = true;
+  const context: CaptureContext = { capture: requestCapture };
+  const settle = () => {
+    dispatch.settled = true;
+    // Pooled sockets and background timers inherit this ALS store. Detach the
+    // capture once dispatch ends so those resources cannot retain whole prompts
+    // and request-log closures. The caller still owns its capture for responses.
+    context.capture = null;
+  };
+  try {
+    return dispatchContext.run(dispatch, () => {
+      for (const listener of getDispatchStartListeners()) listener();
+      return captureState.context.run(context, fn).finally(settle);
     });
-  });
+  } catch (error) {
+    settle();
+    throw error;
+  }
 }
 
 /**
@@ -184,7 +201,7 @@ function installFetchCapture() {
 
   captureState.wrappedInnerFetch = globalThis.fetch.bind(globalThis);
   captureState.wrappedFetch = (async (input: FetchInput, init?: FetchInit) => {
-    const activeCapture = captureState.context.getStore();
+    const activeCapture = captureState.context.getStore()?.capture;
     if (activeCapture) {
       await captureFetchRequest(activeCapture, input, init);
     }
@@ -200,16 +217,14 @@ async function captureFetchRequest(requestCapture: Capture, input: FetchInput, i
   const bodyString = bodyToString(init?.body);
   if (!bodyString) return;
 
+  const url = getFetchUrl(input);
+  const latest = requestCapture.latest?.();
+  if (latest?.url === url && latest.bodyString === bodyString) return;
+
   const body = parseBody(bodyString);
   if (!looksLikeProviderRequestBody(body)) return;
 
-  await capturePreparedRequest(
-    requestCapture,
-    getFetchUrl(input),
-    getFetchHeaders(input, init),
-    body,
-    bodyString
-  );
+  await capturePreparedRequest(requestCapture, url, getFetchHeaders(input, init), body, bodyString);
 }
 
 function getFetchMethod(input: FetchInput, init?: FetchInit) {
