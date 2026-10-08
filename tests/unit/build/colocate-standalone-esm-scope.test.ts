@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
+import { Worker } from "node:worker_threads";
 
 import { writeEsmWorkerScopes } from "../../../scripts/build/colocate-standalone.mjs";
 
@@ -128,8 +129,9 @@ test("scoped layout runs a CJS server.js and an ESM worker.js side by side", () 
   }
 });
 
-test("colocate-standalone bundles the required compression worker", () => {
+test("colocate-standalone runs the compression worker in an isolated installation", async () => {
   const root = mkdtempSync(join(tmpdir(), "colocate-compression-worker-"));
+  let worker: Worker | undefined;
   try {
     writeFileSync(join(root, "server.js"), "module.exports = {};\n");
     execFileSync(process.execPath, ["scripts/build/colocate-standalone.mjs"], {
@@ -140,7 +142,31 @@ test("colocate-standalone bundles the required compression worker", () => {
     const workerDir = join(root, "open-sse", "services", "compression");
     assert.equal(existsSync(join(workerDir, "compressionWorker.js")), true);
     assert.equal(JSON.parse(readFileSync(join(workerDir, "package.json"), "utf8")).type, "module");
+    worker = new Worker(join(workerDir, "compressionWorker.js"), {
+      execArgv: [],
+      env: { ...process.env, NODE_ENV: "test", DATA_DIR: join(root, "data") },
+    });
+    const result = await new Promise<{ type: string; id: number }>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("isolated worker timed out")), 15_000);
+      worker!.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      worker!.on("message", (message: { type: string; id: number }) => {
+        if (message.type === "step") return;
+        clearTimeout(timer);
+        resolve(message);
+      });
+      worker!.postMessage({
+        id: 1,
+        mode: "standard",
+        body: { messages: [{ role: "user", content: "Please basically actually help." }] },
+      });
+    });
+    assert.equal(result.type, "result", "worker must load dependencies and complete compression");
+    assert.equal(result.id, 1);
   } finally {
+    await worker?.terminate();
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });

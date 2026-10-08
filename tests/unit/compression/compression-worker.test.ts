@@ -119,6 +119,49 @@ describe("compression worker eligibility", () => {
 });
 
 describe("compression worker execution", () => {
+  it("does not retain or replay a job when worker construction throws", async () => {
+    const pool = new CompressionWorkerPool({ size: 1, idleMs: 50 });
+    const injectable = pool as unknown as {
+      spawn: () => unknown;
+      queue: unknown[];
+    };
+    const originalSpawn = injectable.spawn;
+    injectable.spawn = () => {
+      throw new Error("synthetic worker construction failure");
+    };
+    try {
+      await assert.rejects(
+        pool.run(body, "stacked", { config }),
+        /synthetic worker construction failure/
+      );
+      assert.equal(injectable.queue.length, 0, "failed job must release its body and callback");
+      injectable.spawn = originalSpawn;
+      const result = await pool.run(body, "stacked", { config });
+      assert.deepEqual(
+        comparable(result),
+        comparable(applyCompression(body, "stacked", { config }))
+      );
+    } finally {
+      await pool.close();
+    }
+  });
+
+  it("releases the active slot when posting a job throws", async () => {
+    const originalPostMessage = Worker.prototype.postMessage;
+    const pool = new CompressionWorkerPool({ size: 1, idleMs: 50 });
+    const state = pool as unknown as { workers: Set<{ job: unknown }> };
+    Worker.prototype.postMessage = function () {
+      throw new Error("synthetic postMessage failure");
+    };
+    try {
+      await assert.rejects(pool.run(body, "stacked", { config }), /synthetic postMessage failure/);
+      assert.equal(state.workers.size, 0, "failed dispatch must release its slot immediately");
+    } finally {
+      Worker.prototype.postMessage = originalPostMessage;
+      await pool.close();
+    }
+  });
+
   it("matches the synchronous body and stats except timing fields", async () => {
     const sync = applyCompression(body, "stacked", { config });
     const async = await applyCompressionAsync(body, "stacked", { config });
