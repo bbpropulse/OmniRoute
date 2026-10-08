@@ -445,16 +445,17 @@ Qdrant-related DB keys (`qdrantEnabled`, `qdrantHost`, `qdrantPort`,
 
 Six optional env vars tune the engine's runtime behaviour (documented in `.env.example`):
 
-| Variable                        | Default                    | Description                                                                                                    |
-| ------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `MEMORY_EMBEDDING_CACHE_TTL_MS` | `300000`                   | Embedding cache TTL (5 min)                                                                                    |
-| `MEMORY_EMBEDDING_CACHE_MAX`    | `1000`                     | Max entries in embedding LRU cache                                                                             |
-| `MEMORY_TRANSFORMERS_MODEL`     | `Xenova/all-MiniLM-L6-v2`  | HF repo for Transformers.js model                                                                              |
-| `MEMORY_STATIC_MODEL`           | `minishlab/potion-base-8M` | HF repo for static potion model                                                                                |
-| `MEMORY_STATIC_CACHE_DIR`       | `<DATA_DIR>/embeddings`    | Where to store downloaded models                                                                               |
-| `MEMORY_VEC_TOP_K`              | `20`                       | Default top-K for vector search                                                                                |
-| `MEMORY_RRF_K`                  | `60`                       | RRF k constant for hybrid search                                                                               |
-| `MEMORY_VEC_QUANTIZATION`       | `none`                     | Set to `int8` to store local sqlite-vec vectors quantized (~4× smaller; opt-in). Mode change forces a reindex. |
+| Variable                        | Default                              | Description                                                                                                    |
+| ------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `MEMORY_EMBEDDING_CACHE_TTL_MS` | `300000`                             | Embedding cache TTL (5 min)                                                                                    |
+| `MEMORY_EMBEDDING_CACHE_MAX`    | `1000`                               | Max entries in embedding LRU cache                                                                             |
+| `MEMORY_TRANSFORMERS_MODEL`     | `Xenova/all-MiniLM-L6-v2`            | HF repo for Transformers.js model                                                                              |
+| `MEMORY_TRANSFORMERS_CACHE_DIR` | `<DATA_DIR>/embeddings/transformers` | Persistent local Transformers.js model cache; place on a volume in containers.                                 |
+| `MEMORY_STATIC_MODEL`           | `minishlab/potion-base-8M`           | HF repo for static potion model                                                                                |
+| `MEMORY_STATIC_CACHE_DIR`       | `<DATA_DIR>/embeddings`              | Where to store downloaded models                                                                               |
+| `MEMORY_VEC_TOP_K`              | `20`                                 | Default top-K for vector search                                                                                |
+| `MEMORY_RRF_K`                  | `60`                                 | RRF k constant for hybrid search                                                                               |
+| `MEMORY_VEC_QUANTIZATION`       | `none`                               | Set to `int8` to store local sqlite-vec vectors quantized (~4× smaller; opt-in). Mode change forces a reindex. |
 
 ## Summarisation (`summarization.ts`)
 

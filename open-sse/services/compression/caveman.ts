@@ -376,6 +376,15 @@ export function cavemanCompress(
     const compressTextPart = (textPart: string): string => {
       if (!textPart || textPart.length < config.minMessageLength) return textPart;
 
+      if (config.prefixOnly) {
+        const result = textPart.replace(
+          /^(?:por favor|por gentileza|please|kindly)(?:,[ \t]*|[ \t]+)/i,
+          ""
+        );
+        if (result !== textPart) allAppliedRules.push("polite_prefix");
+        return result;
+      }
+
       const shouldPreserve =
         customPreservation.patterns.length > 0 || hasProtectedStructure(textPart);
       const { text: extractedText, blocks } = shouldPreserve
