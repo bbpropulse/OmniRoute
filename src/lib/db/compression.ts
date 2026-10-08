@@ -815,6 +815,7 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
         config.headroom = normalizeHeadroomConfig(parsed);
         break;
       case "sessionDedup":
+      case "fidelityGate":
       case "ccr":
         applyDetailConfigUpdate(config, key, parsed);
         break;

@@ -957,6 +957,7 @@ Embedding layer, vector store and reranking knobs for the persistent memory subs
 | `MEMORY_EMBEDDING_CACHE_TTL_MS` | `300000` (5 min)           | TTL for the in-memory embedding cache (per source/model/dim signature).                                    |
 | `MEMORY_EMBEDDING_CACHE_MAX`    | `1000`                     | Max LRU entries kept in the embedding cache.                                                               |
 | `MEMORY_TRANSFORMERS_MODEL`     | `Xenova/all-MiniLM-L6-v2`  | HF repo id for the opt-in `@huggingface/transformers` local MiniLM pipeline (~23 MB int8, ~400 MB RAM).    |
+| `MEMORY_TRANSFORMERS_CACHE_DIR` | `<DATA_DIR>/embeddings/transformers` | Persistent download cache for the local Transformers.js model. Keep on a volume in containers. |
 | `MEMORY_STATIC_MODEL`           | `minishlab/potion-base-8M` | HF repo id for the static potion/Model2Vec lookup-table embedder. Downloaded lazily into the cache dir.    |
 | `MEMORY_STATIC_CACHE_DIR`       | `<DATA_DIR>/embeddings`    | Directory used to cache the static potion model files. Defaults under `DATA_DIR` when unset.               |
 | `HF_HUB_ENDPOINT`               | `https://huggingface.co`   | Override Hugging Face Hub base URL used by `staticPotion.ts` (e.g. mirror endpoint for air-gapped setups). |

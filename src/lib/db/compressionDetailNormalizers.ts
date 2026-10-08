@@ -56,15 +56,28 @@ export function normalizeCcrConfig(value: unknown): CcrConfig {
 
 /** Default sub-objects spread into getCompressionSettings' seed config. */
 export function buildDetailConfigDefaults(): Pick<CompressionConfig, "sessionDedup" | "ccr"> {
-  return { sessionDedup: normalizeSessionDedupConfig(undefined), ccr: normalizeCcrConfig(undefined) };
+  return {
+    sessionDedup: normalizeSessionDedupConfig(undefined),
+    ccr: normalizeCcrConfig(undefined),
+  };
 }
 
 /** Applies a stored sessionDedup/ccr row onto config during getCompressionSettings' row scan. */
 export function applyDetailConfigUpdate(
   config: CompressionConfig,
-  key: "sessionDedup" | "ccr",
+  key: "sessionDedup" | "ccr" | "fidelityGate",
   parsed: unknown
 ): void {
   if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
-  else config.ccr = normalizeCcrConfig(parsed);
+  else if (key === "ccr") config.ccr = normalizeCcrConfig(parsed);
+  else {
+    const record = toRecord(parsed);
+    config.fidelityGate = {
+      enabled: record.enabled === true,
+      minTokenSurvivalPercent: boundedInt(record.minTokenSurvivalPercent, 95, 0, 100),
+      minJsonKeyPercent: boundedInt(record.minJsonKeyPercent, 90, 0, 100),
+      checkNumericIntegrity: record.checkNumericIntegrity !== false,
+      checkDiffHunks: record.checkDiffHunks !== false,
+    };
+  }
 }

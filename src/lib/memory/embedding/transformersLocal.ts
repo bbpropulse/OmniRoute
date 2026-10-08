@@ -6,11 +6,12 @@
  * This satisfies D8 + D25 (serverExternalPackages + no bundle impact).
  */
 
+import os from "node:os";
+import path from "node:path";
 import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error.ts";
 import type { EmbeddingResult, EmbeddingError } from "./types";
 
-const TRANSFORMERS_MODEL =
-  process.env.MEMORY_TRANSFORMERS_MODEL || "Xenova/all-MiniLM-L6-v2";
+const TRANSFORMERS_MODEL = process.env.MEMORY_TRANSFORMERS_MODEL || "Xenova/all-MiniLM-L6-v2";
 
 // Singleton pipeline, initialized once
 type PipelineFn = (text: string | string[], options?: Record<string, unknown>) => Promise<unknown>;
@@ -30,8 +31,24 @@ async function getOrLoadPipeline(): Promise<PipelineFn> {
   _pipelineLoading = (async (): Promise<PipelineFn> => {
     // Lazy import — never at module level (D8, D25)
     const transformers = await import("@huggingface/transformers");
-    const { pipeline } = transformers as { pipeline: (task: string, model: string, opts?: Record<string, unknown>) => Promise<PipelineFn> };
-    const pipe = await pipeline("feature-extraction", TRANSFORMERS_MODEL, { dtype: "q8" });
+    const { pipeline } = transformers as {
+      pipeline: (
+        task: string,
+        model: string,
+        opts?: Record<string, unknown>
+      ) => Promise<PipelineFn>;
+    };
+    const pipe = await pipeline("feature-extraction", TRANSFORMERS_MODEL, {
+      dtype: "q8",
+      cache_dir:
+        process.env.MEMORY_TRANSFORMERS_CACHE_DIR ||
+        path.join(
+          process.env.DATA_DIR || path.join(os.homedir(), ".omniroute"),
+          "embeddings",
+          "transformers"
+        ),
+      session_options: { intraOpNumThreads: 2, interOpNumThreads: 1 },
+    });
     _pipeline = pipe;
     _pipelineLoading = null;
     return pipe;

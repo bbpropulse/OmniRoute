@@ -388,13 +388,7 @@ async function retrieveMemoriesInternal(
                 }
                 for (const entry of qdrantItems) {
                   const memoryTokens = estimateTokens(entry.memory.content);
-                  if (totalTokens + memoryTokens > maxTokens) {
-                    if (memories.length === 0) {
-                      memories.push(entry);
-                      totalTokens += memoryTokens;
-                    }
-                    break;
-                  }
+                  if (totalTokens + memoryTokens > maxTokens) continue;
                   memories.push(entry);
                   totalTokens += memoryTokens;
                 }
@@ -442,13 +436,7 @@ async function retrieveMemoriesInternal(
                 // Token budget enforcement
                 for (const entry of rankedItems) {
                   const memoryTokens = estimateTokens(entry.memory.content);
-                  if (totalTokens + memoryTokens > maxTokens) {
-                    if (memories.length === 0) {
-                      memories.push(entry);
-                      totalTokens += memoryTokens;
-                    }
-                    break;
-                  }
+                  if (totalTokens + memoryTokens > maxTokens) continue;
                   memories.push(entry);
                   totalTokens += memoryTokens;
                 }
@@ -516,13 +504,7 @@ async function retrieveMemoriesInternal(
                 }
                 for (const entry of qdrantItems) {
                   const memoryTokens = estimateTokens(entry.memory.content);
-                  if (totalTokens + memoryTokens > maxTokens) {
-                    if (memories.length === 0) {
-                      memories.push(entry);
-                      totalTokens += memoryTokens;
-                    }
-                    break;
-                  }
+                  if (totalTokens + memoryTokens > maxTokens) continue;
                   memories.push(entry);
                   totalTokens += memoryTokens;
                 }
@@ -583,13 +565,7 @@ async function retrieveMemoriesInternal(
                 // Token budget enforcement
                 for (const entry of rankedHybridItems) {
                   const memoryTokens = estimateTokens(entry.memory.content);
-                  if (totalTokens + memoryTokens > maxTokens) {
-                    if (memories.length === 0) {
-                      memories.push(entry);
-                      totalTokens += memoryTokens;
-                    }
-                    break;
-                  }
+                  if (totalTokens + memoryTokens > maxTokens) continue;
                   memories.push(entry);
                   totalTokens += memoryTokens;
                 }
@@ -657,13 +633,7 @@ async function retrieveMemoriesInternal(
     const memory = entry.memory;
     const memoryTokens = estimateTokens(memory.content);
 
-    if (totalTokens + memoryTokens > maxTokens) {
-      if (memories.length === 0) {
-        memories.push(entry);
-        totalTokens += memoryTokens;
-      }
-      break;
-    }
+    if (totalTokens + memoryTokens > maxTokens) continue;
 
     memories.push(entry);
     totalTokens += memoryTokens;
@@ -754,7 +724,7 @@ export async function retrievePreview(
             for (const item of items) {
               if (result.length >= limit) break;
               const tokens = estimateTokens(item.memory.content);
-              if (totalTokens + tokens > maxTokens && result.length > 0) break;
+              if (totalTokens + tokens > maxTokens) continue;
               result.push({ ...item, tokens });
               totalTokens += tokens;
             }
@@ -825,7 +795,7 @@ export async function retrievePreview(
               for (const item of items) {
                 if (result.length >= limit) break;
                 const tokens = estimateTokens(item.memory.content);
-                if (totalTokens + tokens > maxTokens && result.length > 0) break;
+                if (totalTokens + tokens > maxTokens) continue;
                 result.push({ ...item, tokens });
                 totalTokens += tokens;
               }
@@ -873,7 +843,7 @@ export async function retrievePreview(
               for (const item of items) {
                 if (result.length >= limit) break;
                 const tokens = estimateTokens(item.memory.content);
-                if (totalTokens + tokens > maxTokens && result.length > 0) break;
+                if (totalTokens + tokens > maxTokens) continue;
                 result.push({ ...item, tokens });
                 totalTokens += tokens;
               }
@@ -933,7 +903,7 @@ export async function retrievePreview(
       const memory = rowToMemory(row);
       const score = query ? getRelevanceScore(memory, query) : 0;
       const tokens = estimateTokens(memory.content);
-      if (totalTokens + tokens > maxTokens && result.length > 0) break;
+      if (totalTokens + tokens > maxTokens) continue;
       result.push({ memory, score, tokens, tier: "fts5", vecScore: null, ftsScore: null });
       totalTokens += tokens;
     }
@@ -966,7 +936,7 @@ export async function retrievePreview(
       const memory = rowToMemory(row);
       const score = query ? getRelevanceScore(memory, query) : 0;
       const tokens = estimateTokens(memory.content);
-      if (totalTokens + tokens > maxTokens && result.length > 0) break;
+      if (totalTokens + tokens > maxTokens) continue;
       result.push({ memory, score, tokens, tier: "fts5", vecScore: null, ftsScore: null });
       totalTokens += tokens;
     }
