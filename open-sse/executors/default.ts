@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { BaseExecutor, type ExecuteInput } from "./base.ts";
 import { mapNvidiaGlm52ReasoningParams } from "./base/reasoningEffort.ts";
-import { PROVIDERS, OAUTH_ENDPOINTS } from "../config/constants.ts";
+import { PROVIDERS } from "../config/constants.ts";
 import { getAccessToken } from "../services/tokenRefresh.ts";
 
 import {
@@ -65,6 +65,7 @@ import { normalizePoolConfig } from "./default/poolConfig.ts";
 import { acquireNvidiaConcurrencySlot } from "./default/nvidiaConcurrencyGate.ts";
 import { resolveAlibabaProviderBaseUrl } from "@/shared/constants/alibabaProviderRegions";
 import { usesCcWireImage } from "../services/ccWireImageBuiltins.ts";
+import { normalizeAnthropicApiIdentity } from "./default/anthropicApiIdentity.ts";
 
 const NVIDIA_TOOL_CALL_ID_PATTERN = /^[A-Za-z0-9]{9}$/;
 const PERPLEXITY_AGENT_DEFAULT_MAX_OUTPUT_TOKENS = 4096;
@@ -701,6 +702,9 @@ export class DefaultExecutor extends BaseExecutor {
       }
     }
 
+    if (this.provider === "anthropic" && effectiveKey) {
+      normalizeAnthropicApiIdentity(headers, clientHeaders);
+    }
     normalizeAnthropicHeaderVariants(headers);
 
     return headers;
