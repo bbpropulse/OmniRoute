@@ -1,5 +1,6 @@
 import { generateModels, generateAliasMap, type RegistryModel } from "./providerRegistry.ts";
 import { getVertexModelTargetFormat } from "./vertexModels.ts";
+import { getModelSpec } from "@/shared/constants/modelSpecs.ts";
 
 // Lazy PROVIDER_MODELS: deferred until first property access to speed up startup.
 // The Proxy defers `generateModels()` from module-evaluation time to the first read.
@@ -280,6 +281,7 @@ export function supportsClaudeMaxEffort(modelId: string | null | undefined): boo
   const claudeMatch = normalized.match(CLAUDE_MODEL_PATTERN);
   if (!claudeMatch) return false;
   const claudeScopedId = normalized.slice(claudeMatch.index ?? 0);
+  if (getModelSpec(modelId)?.effortLevels?.includes("max")) return true;
   return !CLAUDE_MAX_EFFORT_UNSUPPORTED_FAMILY_PATTERNS.some((pattern) =>
     pattern.test(claudeScopedId)
   );

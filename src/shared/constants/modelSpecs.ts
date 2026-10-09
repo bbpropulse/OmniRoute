@@ -541,6 +541,23 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     aliases: ["claude-sonnet-4.5"],
   },
 
+  // Haiku 5.5 uses adaptive thinking; disabled thinking is valid through high effort.
+  "claude-haiku-5-5": {
+    maxOutputTokens: 128000,
+    contextWindow: 1000000,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    adaptiveThinkingOnly: true,
+    maxEffortWhenThinkingDisabled: "high",
+    effortLevels: ["low", "medium", "high", "xhigh", "max"],
+    aliases: [
+      ...BEDROCK_CLAUDE_ALIASES("claude-haiku-5-5", "claude-haiku-5.5"),
+      "anthropic/claude-haiku-5-5",
+      "anthropic/claude-haiku-5.5",
+    ],
+  },
+
   // ── Claude Haiku 4.5 ────────────────────────────────────────────
   "claude-haiku-4-5-20251001": {
     maxOutputTokens: 64000,
