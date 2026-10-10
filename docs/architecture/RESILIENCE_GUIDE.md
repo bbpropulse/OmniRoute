@@ -181,6 +181,19 @@ Regression guards: `tests/unit/claude-low-priority-mode.test.ts`,
 - Header extraction (generic, any provider): `src/sse/services/auth.ts::extractSessionAffinityKey()`
 - Persisted pin table: `sessionAccountAffinity` (`src/lib/db/sessionAccountAffinity.ts`)
 - Setting: `sessionAffinityTtlMs` (global TTL in ms, `0` disables) — `src/lib/db/settings.ts`. Renamed from the Codex-only `codexSessionAffinityTtlMs` by migration `124_generic_session_affinity_ttl.sql`, which carries over any previously-configured Codex TTL as the new default.
+- Provider overrides: `providerSessionAffinityTtlMs` maps a provider id to its TTL in ms.
+  An explicit per-request positive TTL wins, followed by the provider override (including
+  `0` to disable), then the global/legacy setting. Missing overrides retain existing behavior.
+
+For example, `{"providerSessionAffinityTtlMs":{"claude":3600000,"anthropic":3600000}}`
+keeps each conversation on an eligible account for one hour of inactivity in these two
+pools without enabling affinity for other providers. The pin is refreshed on reuse and
+can move to an eligible sibling when its connection becomes unavailable. This is a routing
+TTL, independent of the upstream prompt-cache TTL carried in `cache_control`.
+
+Claude Code's JSON `metadata.user_id.session_id` is also recognized after explicit
+session headers/body fields. It keeps the same pin after history compaction; device or
+account identity without a session id does not create a conversation pin.
 
 Before #7274, `resolveSessionAffinityTtlMs()` hard-bailed to `0` for every provider except `codex`, so the TTL setting (and the session headers) had no effect anywhere else even though the pinning mechanism and header extraction were already provider-agnostic. The fix removed that early-return; the TTL now applies uniformly to every provider once set globally above `0`.
 

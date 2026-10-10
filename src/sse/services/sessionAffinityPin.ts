@@ -213,12 +213,26 @@ export function extractSessionAffinityKey(
     normalizeSessionKey(metadata.sessionId, "metadata") ??
     normalizeSessionKey(record.conversation_id, "conversation") ??
     normalizeSessionKey(record.session_id, "session") ??
-    normalizeSessionKey(record.prompt_cache_key, "prompt-cache");
+    normalizeSessionKey(record.prompt_cache_key, "prompt-cache") ??
+    extractClaudeCodeSessionKey(metadata.user_id);
   if (explicitKey) return explicitKey;
 
   const inputText = getFirstInputText(body);
   if (!inputText) return null;
   return `input:sha256:${createHash("sha256").update(inputText).digest("hex")}`;
+}
+
+/** Claude Code encodes its stable session id in metadata.user_id JSON.
+ * Read only the session field; device/account ids alone are not conversations.
+ * Bounding the input prevents large metadata from blocking the request path.
+ */
+function extractClaudeCodeSessionKey(userId: unknown): string | null {
+  if (typeof userId !== "string" || userId.length > SESSION_KEY_MAX_INPUT_LEN) return null;
+  try {
+    return normalizeSessionKey(asRecord(JSON.parse(userId)).session_id, "claude-code");
+  } catch {
+    return null;
+  }
 }
 
 /** Minimal structural view of a provider connection this module reads. */
@@ -430,23 +444,29 @@ export interface AffinityPinOptions {
 export interface AffinityPinSettings {
   sessionAffinityTtlMs?: number | null;
   codexSessionAffinityTtlMs?: number | null;
+  providerSessionAffinityTtlMs?: Record<string, number> | null;
 }
 
 /**
  * Resolve the effective session-affinity TTL for any provider (#7274 — previously
  * hardcoded to codex only): an explicit per-request override wins, else the
- * persisted generic setting (falling back to the legacy codex-only key for
+ * provider-specific setting (including 0 to disable), then the persisted
+ * generic setting (falling back to the legacy codex-only key for
  * pre-migration callers), else 0 (disabled). Kept here so auth.ts can reuse it at
  * both the pin-override site and the downstream `selectSessionAffinityConnection`
  * site with one call.
  */
 export function resolveSessionAffinityTtlMs(
-  _provider: string,
+  provider: string,
   options: AffinityPinOptions,
   settings: AffinityPinSettings
 ): number {
   const override = Number(options.sessionAffinityTtlMs);
   if (Number.isFinite(override) && override > 0) return override;
+  const providerTtl = settings.providerSessionAffinityTtlMs?.[provider];
+  if (typeof providerTtl === "number" && Number.isFinite(providerTtl) && providerTtl >= 0) {
+    return providerTtl;
+  }
   const configured = Number(settings.sessionAffinityTtlMs ?? settings.codexSessionAffinityTtlMs);
   if (Number.isFinite(configured) && configured > 0) return configured;
   return 0;
