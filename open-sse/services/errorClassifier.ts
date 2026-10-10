@@ -2,6 +2,7 @@ import {
   ACCOUNT_DEACTIVATED_SIGNALS,
   CREDITS_EXHAUSTED_SIGNALS,
   isAccountDeactivated,
+  isAnthropicBillingRequestRejection,
   isCreditsExhausted,
   isDailyQuotaExhausted,
   isOAuthInvalidToken,
@@ -79,6 +80,8 @@ export const PROVIDER_ERROR_TYPES = {
   FORBIDDEN: "forbidden",
   SERVER_ERROR: "server_error",
   QUOTA_EXHAUSTED: "quota_exhausted",
+  // A billing eligibility rejection of this call is not proof of a dead key.
+  BILLING_REQUEST_REJECTED: "billing_request_rejected",
   PROJECT_ROUTE_ERROR: "project_route_error",
   CONTEXT_OVERFLOW: "context_overflow",
   OAUTH_INVALID_TOKEN: "oauth_invalid_token",
@@ -342,6 +345,9 @@ export function classifyProviderError(
   provider?: string | null
 ): ProviderErrorType | null {
   const bodyStr = responseBodyToString(responseBody);
+  if (isAnthropicBillingRequestRejection(statusCode, bodyStr, provider)) {
+    return PROVIDER_ERROR_TYPES.BILLING_REQUEST_REJECTED;
+  }
   const creditsExhausted = isCreditsExhausted(bodyStr);
   const subscriptionQuotaExhausted = isSubscriptionQuotaText(bodyStr.toLowerCase());
   const accountDeactivated = isAccountDeactivated(bodyStr);

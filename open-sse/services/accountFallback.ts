@@ -504,6 +504,25 @@ export function isCreditsExhausted(errorText: string): boolean {
 }
 
 /**
+ * Anthropic uses this 400 for client-specific credit eligibility as well as an
+ * empty balance. It does not prove the credential is unusable for other calls.
+ * Surface the rejection without disabling or rotating otherwise usable keys.
+ */
+export function isAnthropicBillingRequestRejection(
+  status: number,
+  errorText: string,
+  provider?: string | null
+): boolean {
+  return (
+    status === 400 &&
+    resolveProviderId(provider || "") === "anthropic" &&
+    String(errorText || "")
+      .toLowerCase()
+      .includes("credit balance is too low")
+  );
+}
+
+/**
  * Returns true if the response body indicates the requested model has been
  * permanently retired by the provider (see MODEL_PERMANENTLY_UNAVAILABLE_PATTERNS).
  */
@@ -1707,6 +1726,14 @@ export function checkFallbackError(
    * always undefined for every other provider, so existing consumers are unaffected. */
   ruleScope?: "model" | "provider" | "connection";
 } {
+  if (isAnthropicBillingRequestRejection(status, String(errorText || ""), provider)) {
+    return {
+      shouldFallback: false,
+      cooldownMs: 0,
+      reason: "billing_request_rejected",
+      skipProviderBreaker: true,
+    };
+  }
   // #10360: an executor-result contract violation is OUR bug, not the provider's.
   // Retrying reproduces it verbatim, and cooling the connection down (or tripping
   // the provider breaker) punishes a healthy account for an internal defect. Must
