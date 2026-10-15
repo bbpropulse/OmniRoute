@@ -168,6 +168,23 @@ connection** (Edit connection → Claude section → `lowPriorityMode` / `autoLi
 Regression guards: `tests/unit/claude-low-priority-mode.test.ts`,
 `tests/unit/claude-limit-reset.test.ts`, `tests/unit/claude-low-priority-executor.test.ts`.
 
+### Anthropic API billing failover
+
+An Anthropic HTTP 400 containing `credit balance is too low` can mean an empty
+balance or request-specific credit eligibility. It triggers sibling-account
+failover for the current request without persisting terminal account status,
+cooldown, or a provider-breaker failure. Each failed connection is excluded from
+that request, and session affinity moves to the eligible sibling. Client identity,
+model, and reasoning effort remain intact. Sibling selection precedes an emergency
+model redirect for this rejection.
+
+API-key connection allowlists and explicit operator connection pins still apply.
+If every eligible account rejects the request, the original billing status/message
+is returned rather than restarting the same pool indefinitely. Failover occurs
+before response content is emitted; it cannot replace an already emitted stream.
+
+Regression guard: `tests/unit/anthropic-billing-failover.test.ts`.
+
 ### Session affinity (#7274)
 
 **Scope:** one client session (`X-Session-Id` / `x-codex-session-id` / `x-omniroute-session` header) pinned to one connection, for **any** provider.

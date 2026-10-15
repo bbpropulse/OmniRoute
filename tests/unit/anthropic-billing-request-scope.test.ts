@@ -37,7 +37,8 @@ test("Anthropic billing 400 is request-scoped across string and JSON envelopes",
     assert.equal(classifyProviderError(400, body, "anthropic"), "billing_request_rejected");
   }
   const decision = checkFallbackError(400, billingMessage, 0, "claude-opus-5-5", "anthropic");
-  assert.equal(decision.shouldFallback, false);
+  assert.equal(decision.shouldFallback, true);
+  assert.equal(decision.requestScoped, true);
   assert.equal(decision.cooldownMs, 0);
   assert.ok(!decision.creditsExhausted);
 });
@@ -83,7 +84,7 @@ test("billing rejection does not disable, cool, or lock any of three usable API 
       "anthropic",
       "claude-opus-5-5"
     );
-    assert.equal(decision.shouldFallback, false);
+    assert.equal(decision.shouldFallback, true);
     assert.equal(decision.cooldownMs, 0);
     const after = await providers.getProviderConnectionById(account.id);
     assert.equal(after.isActive, true);
@@ -150,7 +151,7 @@ for (const stream of [false, true]) {
       assert.equal(result.status, 400);
       assert.match(String(result.error), /credit balance is too low/);
       await result.response.text();
-      assert.equal(calls, 1, "billing rejection must not rotate or retry the account");
+      assert.equal(calls, 1, "chatCore leaves sibling selection to the outer request loop");
       const after = await providers.getProviderConnectionById(account.id);
       assert.equal(after.isActive, true);
       assert.equal(after.testStatus, "active");

@@ -2815,6 +2815,12 @@ export async function markAccountUnavailable(
       return { shouldFallback: true, cooldownMs: 0 };
     }
 
+    // The request loop excludes this account and re-pins to a healthy sibling.
+    // An ambiguous Anthropic billing 400 must not disable the whole pool.
+    if (fallbackResult.requestScoped) {
+      return { shouldFallback: fallbackResult.shouldFallback, cooldownMs: 0 };
+    }
+
     // Read passthroughModels from connection config (user-configured per-model quota)
     const connProviderSpecificData = (conn?.providerSpecificData as Record<string, unknown>) || {};
     if (provider && conn) {
