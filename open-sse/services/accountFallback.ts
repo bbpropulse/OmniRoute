@@ -506,7 +506,8 @@ export function isCreditsExhausted(errorText: string): boolean {
 /**
  * Anthropic uses this 400 for client-specific credit eligibility as well as an
  * empty balance. It does not prove the credential is unusable for other calls.
- * Surface the rejection without disabling or rotating otherwise usable keys.
+ * Try an eligible sibling for this request without disabling otherwise usable
+ * credentials. If every account rejects it, preserve the upstream billing error.
  */
 export function isAnthropicBillingRequestRejection(
   status: number,
@@ -1716,6 +1717,8 @@ export function checkFallbackError(
    * provider itself). Callers should apply connection cooldown only — do NOT record a provider
    * circuit-breaker failure when this flag is set. */
   skipProviderBreaker?: boolean;
+  /** Retry a sibling for this request without persisting account health/cooldown. */
+  requestScoped?: boolean;
   quotaResetHintMs?: number;
   /** #6061: the provider-configured cooldown (ms) before backoff scaling, surfaced so the
    * caller can persist an explicit reset window instead of the engine's scaled cooldown. */
@@ -1728,10 +1731,11 @@ export function checkFallbackError(
 } {
   if (isAnthropicBillingRequestRejection(status, String(errorText || ""), provider)) {
     return {
-      shouldFallback: false,
+      shouldFallback: true,
       cooldownMs: 0,
       reason: "billing_request_rejected",
       skipProviderBreaker: true,
+      requestScoped: true,
     };
   }
   // #10360: an executor-result contract violation is OUR bug, not the provider's.
