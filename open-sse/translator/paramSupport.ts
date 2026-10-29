@@ -18,6 +18,7 @@
 
 import { getParamFilterConfig, ModelParamFilter, ProviderParamFilter } from "@/lib/db/paramFilters";
 import { getProviderModel } from "../config/providerModels.ts";
+import { stripSonnet55SamplingParams } from "../services/claudeCodeConstraints.ts";
 
 type StripRule = {
   provider?: string;
@@ -220,6 +221,9 @@ export function stripUnsupportedParams<T>(
 
   // Phase 2: Config-driven rules from DB
   applyConfigFilters(provider, model, rec, snapshot);
+
+  // Model-level API restrictions still apply when an operator allowlist restores keys.
+  stripSonnet55SamplingParams(rec, model);
 
   return body;
 }
