@@ -10,6 +10,23 @@
  * 5. Default missing cache_control.ttl to "1h" on the native Claude OAuth path
  */
 
+/** Sonnet 5.5 rejects sampling parameters, including their default values. */
+export function stripSonnet55SamplingParams(body: unknown, model?: unknown): boolean {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+  const payload = body as Record<string, unknown>;
+  const modelName =
+    String(model ?? payload.model)
+      .split("/")
+      .pop() ?? "";
+  if (modelName !== "claude-sonnet-5-5" && !modelName.startsWith("claude-sonnet-5-5-")) {
+    return false;
+  }
+  delete payload.temperature;
+  delete payload.top_p;
+  delete payload.top_k;
+  return true;
+}
+
 /**
  * Anthropic's extended-thinking contract rejects non-default sampling params:
  * with thinking enabled/adaptive, `temperature` may only be 1 and `top_p` must
@@ -23,6 +40,7 @@
  * invariant).
  */
 export function enforceThinkingTemperature(body: Record<string, unknown>): void {
+  if (stripSonnet55SamplingParams(body)) return;
   const thinking = body.thinking as Record<string, unknown> | undefined;
   if (thinking?.type === "enabled" || thinking?.type === "adaptive") {
     body.temperature = 1;

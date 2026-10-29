@@ -61,7 +61,10 @@ import {
 } from "../services/tokenRefresh.ts";
 import type { ProviderRequestDefaults } from "../services/providerRequestDefaults.ts";
 import { signRequestBody } from "../services/claudeCodeCCH.ts";
-import { normalizeCacheControlTtl } from "../services/claudeCodeConstraints.ts";
+import {
+  normalizeCacheControlTtl,
+  stripSonnet55SamplingParams,
+} from "../services/claudeCodeConstraints.ts";
 import {
   appendAnthropicBetaHeader,
   CLAUDE_CODE_COMPATIBLE_REDACT_THINKING_BETA,
@@ -1390,6 +1393,10 @@ export class BaseExecutor {
         }
 
         stripInternalBodyFields(transformedBody);
+        // Defaults and thinking normalization may run after the handler's filters.
+        // Enforce the actual outbound model's restrictions before signing/serialization.
+        const outboundModel = (transformedBody as Record<string, unknown>)?.model ?? model;
+        stripSonnet55SamplingParams(transformedBody, outboundModel);
         let bodyString = JSON.stringify(transformedBody);
 
         const shouldFingerprint =
