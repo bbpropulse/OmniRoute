@@ -47,6 +47,8 @@ import { extractApiKey } from "@/sse/services/auth";
 import { maybeOmitCatalogModelName } from "./catalogHelpers";
 import { applyCatalogPage, catalogJsonResponse, parseCatalogPage } from "./catalogPagination";
 import { isCodexModelCatalogClient } from "./catalogRequest";
+import { appendConfiguredClaudeEffortAliases, filterCatalogByAllowlist } from "./catalogAllowlist";
+import { buildAliasMaps } from "./catalogProviderMaps";
 
 type CatalogVariantAuthorizer = (model: Record<string, any>) => boolean | Promise<boolean>;
 
@@ -276,6 +278,16 @@ export async function applyCatalogPostFilters(
       appendSyncedEffortVariants(beforeSyncedEffortVariants),
       authorizeSyntheticModel
     );
+    const beforeConfiguredEffortAliases = finalModels;
+    finalModels = await filterUnauthorizedAppendedVariants(
+      beforeConfiguredEffortAliases,
+      appendConfiguredClaudeEffortAliases(
+        beforeConfiguredEffortAliases,
+        process.env.MODEL_DISCOVERY_ALLOWLIST,
+        ctx.aliasToProviderId
+      ),
+      authorizeSyntheticModel
+    );
   }
 
   await yieldTurn();
@@ -341,6 +353,12 @@ export async function finalizeCatalogResponse(
       );
     }
   }
+
+  finalModels = filterCatalogByAllowlist(
+    finalModels,
+    process.env.MODEL_DISCOVERY_ALLOWLIST,
+    buildAliasMaps().aliasToProviderId
+  );
 
   const includeModelNames = isModelCatalogNamesEnabled();
   // #9147: enrichment is the most expensive single stage of the catalog build —

@@ -188,10 +188,7 @@ test("retrieveMemories: respects maxTokens budget (does not exceed)", async () =
 
   // Should not return more than budget allows
   const estimatedTokens = result.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0);
-  assert.ok(
-    estimatedTokens <= 60 || result.length === 1,
-    `total tokens ${estimatedTokens} should be within budget (60) or exactly 1 item`
-  );
+  assert.ok(estimatedTokens <= 60, `total tokens ${estimatedTokens} should be within budget (60)`);
 });
 
 test("retrieveMemories: returns only memories for the given apiKeyId", async () => {

@@ -35,7 +35,6 @@ import {
   type UltraConfig,
 } from "@omniroute/open-sse/services/compression/types.ts";
 import { normalizeCompressionExclusions } from "@omniroute/open-sse/services/compression/exclusions.ts";
-import { DEFAULT_CONTEXT_BUDGET } from "@omniroute/open-sse/services/compression/adaptiveCompression/types.ts";
 import { normalizeContextBudgetConfig } from "./compressionContextBudget";
 import {
   isPreserveSystemPromptMode,
@@ -873,6 +872,7 @@ export async function getCompressionSettings(): Promise<CompressionConfig> {
         }
         break;
       case "sessionDedup":
+      case "fidelityGate":
       case "ccr":
         applyDetailConfigUpdate(config, key, parsed);
         break;

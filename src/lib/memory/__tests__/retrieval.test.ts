@@ -327,17 +327,13 @@ describe("Memory Retrieval — FTS5 integration (pre-existing broken test infras
       });
     }
 
-    // With maxTokens=50, we should get at most 1 memory (~100+ tokens each,
-    // but the first one is always included even if it exceeds the budget)
+    // Every memory exceeds 50 tokens, so none may be returned.
     const results = await retrieveMemories(API_KEY_ID, {
       retrievalStrategy: "exact",
       maxTokens: 50,
     });
 
-    // At least 1 memory (the "always include at least 1" rule)
-    expect(results.length).toBeGreaterThanOrEqual(1);
-    // But far fewer than all 10
-    expect(results.length).toBeLessThan(10);
+    expect(results).toEqual([]);
   });
 
   // ── 6. estimateTokens utility ──

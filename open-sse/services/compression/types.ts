@@ -65,6 +65,8 @@ export interface CavemanRule {
 
 export interface CavemanConfig {
   enabled: boolean;
+  /** Remove only an explicit leading courtesy; preserve the remaining text verbatim. */
+  prefixOnly?: boolean;
   compressRoles: ("user" | "assistant" | "system")[];
   skipRules: string[];
   minMessageLength: number;

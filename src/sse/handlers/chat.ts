@@ -27,6 +27,7 @@ import {
   lockModel,
   recordModelLockoutFailure,
   isDailyQuotaExhausted,
+  isAnthropicBillingRequestRejection,
 } from "@omniroute/open-sse/services/accountFallback.ts";
 import { getCombo, getComboForModel, getModelInfo } from "../services/model";
 import { stripContextWindowSuffix } from "@omniroute/open-sse/services/model.ts";
@@ -2518,7 +2519,11 @@ async function handleSingleModelChat(
       // Combo targets never emergency-hop: the combo is the operator's fallback policy
       // (target-level orchestration plus the global fallback #689 after it), and a
       // per-target hop burns extra upstream calls against exhausted providers (#1731).
-      if (!runtimeOptions.emergencyFallbackTried && !comboName) {
+      if (
+        !runtimeOptions.emergencyFallbackTried &&
+        !comboName &&
+        !isAnthropicBillingRequestRejection(result.status, String(result.error || ""), provider)
+      ) {
         const fallbackDecision = await resolveEmergencyFallbackDecision(
           Number(result.status || 0),
           String(result.error || ""),
@@ -2688,7 +2693,9 @@ async function handleSingleModelChat(
         ((credentials.providerSpecificData?.extraApiKeys as string[] | undefined) ?? []).length >
           0 || connectionHasExtraKeys(credentials.connectionId);
       const is401 = result.status === 401;
-      const skipConnectionDisable = shouldSkipConnDisable(result, is401, hasExtraKeys, provider);
+      const skipConnectionDisable =
+        !isAnthropicBillingRequestRejection(result.status, errorStr, provider) &&
+        shouldSkipConnDisable(result, is401, hasExtraKeys, provider);
 
       const { shouldFallback, cooldownMs } = skipConnectionDisable
         ? { shouldFallback: false, cooldownMs: 0 }

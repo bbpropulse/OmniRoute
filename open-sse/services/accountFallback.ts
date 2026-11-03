@@ -461,6 +461,24 @@ export function isCreditsExhausted(errorText: string): boolean {
 }
 
 /**
+ * This Anthropic 400 can describe client-specific credit eligibility, not a dead
+ * credential. Try a permitted sibling for this call without disabling the pool.
+ */
+export function isAnthropicBillingRequestRejection(
+  status: number,
+  errorText: string,
+  provider?: string | null
+): boolean {
+  return (
+    status === 400 &&
+    resolveProviderId(provider || "") === "anthropic" &&
+    String(errorText || "")
+      .toLowerCase()
+      .includes("credit balance is too low")
+  );
+}
+
+/**
  * Returns true if the response body indicates the requested model has been
  * permanently retired by the provider (see MODEL_PERMANENTLY_UNAVAILABLE_PATTERNS).
  */
@@ -1711,6 +1729,8 @@ export function checkFallbackError(
    * provider itself). Callers should apply connection cooldown only — do NOT record a provider
    * circuit-breaker failure when this flag is set. */
   skipProviderBreaker?: boolean;
+  /** Retry a sibling for this call without persisting account health/cooldown. */
+  requestScoped?: boolean;
   quotaResetHintMs?: number;
   /** #6061: the provider-configured cooldown (ms) before backoff scaling, surfaced so the
    * caller can persist an explicit reset window instead of the engine's scaled cooldown. */
@@ -1755,6 +1775,16 @@ export function checkFallbackError(
       cooldownMs: 0,
       reason: "invalid_previous_response_binding",
       skipProviderBreaker: true,
+    };
+  }
+
+  if (isAnthropicBillingRequestRejection(status, String(errorText || ""), provider)) {
+    return {
+      shouldFallback: true,
+      cooldownMs: 0,
+      reason: "billing_request_rejected",
+      skipProviderBreaker: true,
+      requestScoped: true,
     };
   }
 

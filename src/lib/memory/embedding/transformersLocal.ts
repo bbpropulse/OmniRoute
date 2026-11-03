@@ -7,6 +7,8 @@
  * package while compiling /health (D8 + D25).
  */
 
+import os from "node:os";
+import path from "node:path";
 import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error.ts";
 import type { EmbeddingResult, EmbeddingError } from "./types";
 
@@ -39,7 +41,17 @@ async function getOrLoadPipeline(): Promise<PipelineFn> {
         opts?: Record<string, unknown>
       ) => Promise<PipelineFn>;
     };
-    const pipe = await pipeline("feature-extraction", TRANSFORMERS_MODEL, { dtype: "q8" });
+    const pipe = await pipeline("feature-extraction", TRANSFORMERS_MODEL, {
+      dtype: "q8",
+      cache_dir:
+        process.env.MEMORY_TRANSFORMERS_CACHE_DIR ||
+        path.join(
+          process.env.DATA_DIR || path.join(os.homedir(), ".omniroute"),
+          "embeddings",
+          "transformers"
+        ),
+      session_options: { intraOpNumThreads: 2, interOpNumThreads: 1 },
+    });
     _pipeline = pipe;
     _pipelineLoading = null;
     return pipe;

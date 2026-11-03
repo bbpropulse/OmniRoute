@@ -269,6 +269,10 @@ export const updateSettingsSchema = z.object({
   // clients / cached UI bundles that still PATCH the old field name don't 400;
   // `resolveSessionAffinityTtlMs` prefers the new key when both are present.
   sessionAffinityTtlMs: z.number().int().min(0).max(86_400_000).optional(),
+  // Keep cache-bearing pools sticky without enabling affinity for unrelated providers.
+  providerSessionAffinityTtlMs: z
+    .record(z.string().trim().min(1).max(100), z.number().int().min(0).max(86_400_000))
+    .optional(),
   codexSessionAffinityTtlMs: z.number().int().min(0).max(86_400_000).optional(),
   // #6977: opt-in per-connection Codex quota auto-ping. `connections` maps a
   // provider_connections id -> enabled; default is an empty map (off for everyone)

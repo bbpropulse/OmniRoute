@@ -1,6 +1,6 @@
 // Normalizers for the compression engine DETAIL settings sub-objects that persist to a
-// single key_value row each (settings.sessionDedup / settings.ccr). Extracted out of
-// src/lib/db/compression.ts (frozen at cap by file-size-baseline.json — see
+// single key_value row each (settings.sessionDedup / settings.ccr / settings.fidelityGate).
+// Extracted out of src/lib/db/compression.ts (frozen at cap by file-size-baseline.json — see
 // scripts/check/check-file-size.mjs) rather than growing that file inline.
 //
 // #8388: session-dedup and ccr detail fields (minBlockChars/fuzzy, minChars/
@@ -69,12 +69,22 @@ export function buildDetailConfigDefaults(): Pick<CompressionConfig, "sessionDed
   };
 }
 
-/** Applies a stored sessionDedup/ccr row onto config during getCompressionSettings' row scan. */
+/** Applies a stored detail/fidelity row during getCompressionSettings' row scan. */
 export function applyDetailConfigUpdate(
   config: CompressionConfig,
-  key: "sessionDedup" | "ccr",
+  key: "sessionDedup" | "ccr" | "fidelityGate",
   parsed: unknown
 ): void {
   if (key === "sessionDedup") config.sessionDedup = normalizeSessionDedupConfig(parsed);
-  else config.ccr = normalizeCcrConfig(parsed);
+  else if (key === "ccr") config.ccr = normalizeCcrConfig(parsed);
+  else {
+    const record = toRecord(parsed);
+    config.fidelityGate = {
+      enabled: record.enabled === true,
+      minTokenSurvivalPercent: boundedNumber(record.minTokenSurvivalPercent, 95, 0, 100),
+      minJsonKeyPercent: boundedNumber(record.minJsonKeyPercent, 90, 0, 100),
+      checkNumericIntegrity: record.checkNumericIntegrity !== false,
+      checkDiffHunks: record.checkDiffHunks !== false,
+    };
+  }
 }

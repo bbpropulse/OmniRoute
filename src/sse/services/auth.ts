@@ -2723,6 +2723,12 @@ export async function markAccountUnavailable(
       return { shouldFallback: true, cooldownMs: 0 };
     }
 
+    // The request loop excludes this account and re-pins to a permitted sibling.
+    // An ambiguous Anthropic billing 400 must not disable or cool the whole pool.
+    if (fallbackResult.requestScoped) {
+      return { shouldFallback: fallbackResult.shouldFallback, cooldownMs: 0 };
+    }
+
     // #16824: a verified ModelScope model-access refusal does not invalidate
     // the credential. Probe isolation above takes precedence; real requests
     // lock only the rejected model and leave sibling models routable.

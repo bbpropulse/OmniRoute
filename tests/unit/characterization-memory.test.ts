@@ -199,7 +199,7 @@ test("retrieveMemories records an access bump for every memory it returns", asyn
   assert.ok(row.last_accessed_at);
 });
 
-test("retrieveMemories enforces the token budget but always returns at least one hit", async () => {
+test("retrieveMemories excludes every hit when none fits the token budget", async () => {
   await memory.createMemory(newMemory({ apiKeyId: "char-budget", content: "a".repeat(400) }));
   await memory.createMemory(newMemory({ apiKeyId: "char-budget", content: "b".repeat(400) }));
 
@@ -207,7 +207,7 @@ test("retrieveMemories enforces the token budget but always returns at least one
     retrievalStrategy: "exact",
     maxTokens: 1,
   });
-  assert.equal(hits.length, 1);
+  assert.deepEqual(hits, []);
 });
 
 test("retrieveMemories returns [] when disabled or with a zero budget", async () => {

@@ -32,6 +32,7 @@ export const codexResponsesConfigSchema = z
 export const cavemanConfigSchema = z
   .object({
     enabled: z.boolean().optional(),
+    prefixOnly: z.boolean().optional(),
     compressRoles: z.array(z.enum(["user", "assistant", "system"])).optional(),
     skipRules: z.array(z.string()).optional(),
     minMessageLength: z.number().int().min(0).optional(),
@@ -376,6 +377,16 @@ export const compressionSettingsUpdateSchema = z
     comboOverrides: z.record(z.string(), compressionModeSchema).optional(),
     compressionComboId: z.string().trim().min(1).nullable().optional(),
     stackedPipeline: z.array(stackedPipelineStepSchema).optional(),
+    fidelityGate: z
+      .object({
+        enabled: z.boolean(),
+        minTokenSurvivalPercent: z.number().min(0).max(100).optional(),
+        minJsonKeyPercent: z.number().min(0).max(100).optional(),
+        checkNumericIntegrity: z.boolean().optional(),
+        checkDiffHunks: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     cavemanConfig: cavemanConfigSchema.optional(),
     cavemanOutputMode: cavemanOutputModeSchema.optional(),
     outputStyles: z.array(outputStyleSelectionSchema).optional(),

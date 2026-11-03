@@ -3,6 +3,7 @@ import {
   CREDITS_EXHAUSTED_SIGNALS,
   isAccountDeactivated,
   isCreditsExhausted,
+  isAnthropicBillingRequestRejection,
   isDailyQuotaExhausted,
   isOAuthInvalidToken,
 } from "./accountFallback.ts";
@@ -126,6 +127,8 @@ export const PROVIDER_ERROR_TYPES = {
   // First case: Anthropic's OAuth 403 "Request not allowed" (#12859), which
   // lands on a handful of requests between thousands of 200s on the same token.
   REQUEST_REJECTED: "request_rejected",
+  // A request-specific Anthropic billing rejection does not invalidate the credential.
+  BILLING_REQUEST_REJECTED: "billing_request_rejected",
 } as const;
 
 export type ProviderErrorType = (typeof PROVIDER_ERROR_TYPES)[keyof typeof PROVIDER_ERROR_TYPES];
@@ -400,6 +403,9 @@ export function classifyProviderError(
   provider?: string | null
 ): ProviderErrorType | null {
   const bodyStr = responseBodyToString(responseBody);
+  if (isAnthropicBillingRequestRejection(statusCode, bodyStr, provider)) {
+    return PROVIDER_ERROR_TYPES.BILLING_REQUEST_REJECTED;
+  }
   const creditsExhausted = isCreditsExhausted(bodyStr);
   const subscriptionQuotaExhausted = isSubscriptionQuotaText(bodyStr.toLowerCase());
   const accountDeactivated = isAccountDeactivated(bodyStr);
